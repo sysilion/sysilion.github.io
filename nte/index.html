@@ -25,6 +25,7 @@
         .bg-img-layer { position:absolute; inset:0; background-image:url('https://nte.perfectworld.com/public/images/cover260411/box1.jpg'); background-size:cover; background-position:right center; opacity:0.45; }
         .bg-gradient-layer { position:absolute; inset:0; background:linear-gradient(to right, #0f1115 20%, rgba(15,17,21,0.92) 45%, rgba(15,17,21,0.65) 68%, rgba(15,17,21,0.15) 100%); }
         #bg-toggle-btn.bg-on { color: #a78bfa; }
+        .countdown-display { font-weight: 600; color: #60a5fa; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -204,6 +205,8 @@
             // 배경 이미지 초기 상태 적용
             document.getElementById('bg-image-overlay').style.opacity = bgVisible ? '1' : '0';
             document.getElementById('bg-toggle-btn').classList.toggle('bg-on', bgVisible);
+
+            stopCountdownTimer(); // 기존 타이머 정지
 
             const saved = localStorage.getItem(STORAGE_KEY);
             const today = new Date().toLocaleDateString('ko-KR');
@@ -436,6 +439,7 @@
         }
 
         function switchTab(tab) {
+            stopCountdownTimer(); // 이전 타이머 정지
             currentTab = tab;
             const activeClass = { daily: 'tab-daily', weekly: 'tab-weekly', fixed: 'tab-fixed' };
             ['daily', 'weekly', 'fixed'].forEach(t => {
@@ -574,7 +578,8 @@
                 document.getElementById('progress-percent').innerText = `${percent}%`;
                 document.getElementById('progress-fill').style.width = `${percent}%`;
                 document.getElementById('task-count').innerText = `${doneCount} / ${total}`;
-                document.getElementById('reset-info').innerText = getResetInfo();
+                document.getElementById('reset-info').innerHTML = getResetInfo();
+                startCountdownTimer(); // 카운트다운 타이머 시작
                 if (percent === 100 && total > 0) {
                     if (!completionShown[currentTab]) {
                         completionShown[currentTab] = true;
@@ -589,39 +594,98 @@
             document.getElementById('progress-percent').innerText = '0%';
             document.getElementById('progress-fill').style.width = '0%';
             document.getElementById('task-count').innerText = '0 / 0';
-            document.getElementById('reset-info').innerText = getResetInfo();
+            document.getElementById('reset-info').innerHTML = getResetInfo();
+            startCountdownTimer(); // 카운트다운 타이머 시작
         }
+
+        let countdownTimer = null;
 
         function getResetInfo() {
             const dailyReset = getNextDailyReset();
             const weeklyReset = getNextWeeklyReset();
             if (currentTab === 'daily') {
-                return `매일 00:00 자동 초기화 · 다음: ${formatNextReset(dailyReset)}`;
+                return `매일 05:00 자동 초기화 · 다음: ${formatNextReset(dailyReset)} · <span id="countdown-daily" class="countdown-display"></span>`;
             }
             if (currentTab === 'weekly') {
-                return `매주 월요일 00:00 자동 초기화 · 다음: ${formatNextReset(weeklyReset)}`;
+                return `매주 월요일 05:00 자동 초기화 · 다음: ${formatNextReset(weeklyReset)} · <span id="countdown-weekly" class="countdown-display"></span>`;
             }
             return '수동 초기화만 가능';
         }
 
         function getNextDailyReset() {
             const next = new Date();
-            next.setHours(24, 0, 0, 0);
+            next.setHours(5, 0, 0, 0);
+            // 만약 현재 시간이 이미 05:00을 지났다면, 내일 05:00으로 설정
+            if (next <= new Date()) {
+                next.setDate(next.getDate() + 1);
+            }
             return next;
         }
 
         function getNextWeeklyReset() {
             const next = new Date();
-            next.setHours(0, 0, 0, 0);
+            next.setHours(5, 0, 0, 0);
             const day = next.getDay();
-            const diff = ((8 - day) % 7) || 7;
-            next.setDate(next.getDate() + diff);
+            // 월요일(1) 05:00까지 남은 일수 계산
+            const daysUntilMonday = ((1 - day + 7) % 7);
+            
+            if (daysUntilMonday === 0 && next <= new Date()) {
+                // 이미 이번 주 월요일 05:00을 지났으면 다음주 월요일
+                next.setDate(next.getDate() + 7);
+            } else if (daysUntilMonday > 0) {
+                next.setDate(next.getDate() + daysUntilMonday);
+            }
             return next;
         }
 
         function formatNextReset(date) {
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             return `${date.getMonth() + 1}월 ${date.getDate()}일(${days[date.getDay()]}) ${String(date.getHours()).padStart(2, '0')}:00`;
+        }
+
+        function formatCountdown(ms) {
+            if (ms <= 0) return '초기화 중...';
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            if (hours > 0) {
+                return `${hours}시간 ${String(minutes).padStart(2, '0')}분 ${String(seconds).padStart(2, '0')}초`;
+            } else {
+                return `${String(minutes).padStart(2, '0')}분 ${String(seconds).padStart(2, '0')}초`;
+            }
+        }
+
+        function updateCountdown() {
+            const dailyReset = getNextDailyReset();
+            const weeklyReset = getNextWeeklyReset();
+            const now = new Date();
+
+            const dailyMs = dailyReset - now;
+            const weeklyMs = weeklyReset - now;
+
+            const dailyElement = document.getElementById('countdown-daily');
+            const weeklyElement = document.getElementById('countdown-weekly');
+
+            if (dailyElement) {
+                dailyElement.textContent = formatCountdown(dailyMs);
+            }
+            if (weeklyElement) {
+                weeklyElement.textContent = formatCountdown(weeklyMs);
+            }
+        }
+
+        function startCountdownTimer() {
+            if (countdownTimer) clearInterval(countdownTimer);
+            updateCountdown(); // 초기 업데이트
+            countdownTimer = setInterval(updateCountdown, 1000);
+        }
+
+        function stopCountdownTimer() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
         }
 
         function handleTaskClick(id) {
@@ -740,6 +804,10 @@
         window.addEventListener('appinstalled', () => {
             const installButton = document.getElementById('install-btn');
             if (installButton) installButton.classList.add('hidden');
+        });
+
+        window.addEventListener('beforeunload', () => {
+            stopCountdownTimer();
         });
 
         init();
