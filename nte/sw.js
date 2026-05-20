@@ -48,7 +48,7 @@ function loadAlarmSchedule() {
 
 function startAlarmCheck() {
   if (alarmCheckInterval) clearInterval(alarmCheckInterval);
-  alarmCheckInterval = setInterval(checkAlarm, 10000); // 10초마다 확인
+  alarmCheckInterval = setInterval(checkAlarm, 1000); // 1초마다 확인 (더 정확한 감지)
   checkAlarm(); // 즉시 확인
 }
 
@@ -58,13 +58,15 @@ function checkAlarm() {
   const now = new Date();
   const hours = now.getHours();
   const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
   
-  if (hours === alarmSchedule.hour && minutes === alarmSchedule.minute) {
+  // 시간과 분이 일치하고 초가 0~9 사이일 때만 알람 발동 (중복 방지)
+  if (hours === alarmSchedule.hour && minutes === alarmSchedule.minute && seconds < 10) {
     if (!firedToday) {
       firedToday = true;
       triggerAlarm();
     }
-  } else if (hours === 0 && minutes === 0) {
+  } else if (hours === 0 && minutes === 0 && seconds < 10) {
     firedToday = false;
   }
 }
