@@ -26,6 +26,7 @@
         .bg-gradient-layer { position:absolute; inset:0; background:linear-gradient(to right, #0f1115 20%, rgba(15,17,21,0.92) 45%, rgba(15,17,21,0.65) 68%, rgba(15,17,21,0.15) 100%); }
         #bg-toggle-btn.bg-on { color: #a78bfa; }
         .countdown-display { font-weight: 600; color: #60a5fa; }
+        .countdown-alert { color: #ef4444; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -248,6 +249,7 @@
             registerServiceWorker();
             if (alarmSchedule) {
                 scheduleAlarmWorker();
+                scheduleAlarmServiceWorker();
             }
             saveData();
             render();
@@ -338,7 +340,18 @@
 
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js').catch(err => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    // 페이지 로드 시 저장된 알람 설정을 서비스 워커로 전달
+                    if (alarmSchedule && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'set', time: alarmSchedule });
+                    }
+                    // 서비스 워커로부터의 메시지 수신
+                    navigator.serviceWorker.addEventListener('message', event => {
+                        if (event.data?.type === 'alarm') {
+                            showAlarmNotification(event.data.label || '설정된 시간');
+                        }
+                    });
+                }).catch(err => {
                     console.warn('서비스 워커 등록 실패', err);
                 });
             }
@@ -381,6 +394,7 @@
             if (Number.isNaN(hour) || Number.isNaN(minute)) return;
             alarmSchedule = { hour, minute, label: `${input.value}` };
             scheduleAlarmWorker();
+            scheduleAlarmServiceWorker();
             updateAlarmStatus();
             requestNotificationPermission();
             saveData();
@@ -389,9 +403,20 @@
         function cancelAlarm() {
             if (!alarmWorker) return;
             alarmWorker.postMessage({ type: 'cancel' });
+            cancelAlarmServiceWorker();
             alarmSchedule = null;
             updateAlarmStatus();
             saveData();
+        }
+
+        function scheduleAlarmServiceWorker() {
+            if (!alarmSchedule || !navigator.serviceWorker.controller) return;
+            navigator.serviceWorker.controller.postMessage({ type: 'set', time: alarmSchedule });
+        }
+
+        function cancelAlarmServiceWorker() {
+            if (!navigator.serviceWorker.controller) return;
+            navigator.serviceWorker.controller.postMessage({ type: 'cancel' });
         }
 
         function requestNotificationPermission() {
@@ -700,9 +725,19 @@
 
             if (dailyElement) {
                 dailyElement.textContent = formatCountdown(dailyMs);
+                if (dailyMs < 3600000 && dailyMs > 0) {
+                    dailyElement.classList.add('countdown-alert');
+                } else {
+                    dailyElement.classList.remove('countdown-alert');
+                }
             }
             if (weeklyElement) {
                 weeklyElement.textContent = formatCountdown(weeklyMs);
+                if (weeklyMs < 3600000 && weeklyMs > 0) {
+                    weeklyElement.classList.add('countdown-alert');
+                } else {
+                    weeklyElement.classList.remove('countdown-alert');
+                }
             }
         }
 
