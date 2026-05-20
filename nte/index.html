@@ -535,23 +535,33 @@
             } else {
                 const hoverColors = { daily: 'hover:border-purple-500/50', weekly: 'hover:border-emerald-500/50', fixed: 'hover:border-amber-500/50' };
                 const checkColors = { daily: 'text-cyan-400', weekly: 'text-emerald-400', fixed: 'text-amber-400' };
-                let doneCount = 0;
-                filtered.forEach(task => {
-                    if (task.done) doneCount++;
+                const activeTasks = filtered.filter(t => !t.done);
+                const completedTasks = filtered.filter(t => t.done);
+                const renderTaskCard = task => {
                     const item = document.createElement('div');
                     item.className = `glass flex items-center justify-between p-4 rounded-2xl cursor-grab ${hoverColors[task.type]} transition-all ${task.done ? 'checked' : ''}`;
                     item.dataset.id = task.id;
                     item.draggable = true;
-                    item.onclick = () => handleTaskClick(task.id);
                     item.innerHTML = `
                         <div class="flex items-center gap-4">
-                            <i class="${task.done ? `fa-solid fa-circle-check ${checkColors[task.type]}` : 'fa-regular fa-circle'} text-xl"></i>
-                            <span class="font-medium task-name cursor-text" title="더블클릭으로 편집">${escapeHtml(task.name)}</span>
+                            <button type="button" class="toggle-btn text-left text-slate-200 focus:outline-none">
+                                <i class="${task.done ? `fa-solid fa-circle-check ${checkColors[task.type]}` : 'fa-regular fa-circle'} text-xl"></i>
+                            </button>
+                            <span class="font-medium task-name cursor-text" title="편집 버튼으로 이름을 변경할 수 있습니다">${escapeHtml(task.name)}</span>
                         </div>
-                        <button onclick="deleteTask(${task.id}, event)" class="text-slate-500 hover:text-red-400 p-1 transition-colors">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="startEdit(${task.id}, event)" class="text-slate-400 hover:text-cyan-300 p-1 transition-colors" title="이름 수정">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button type="button" onclick="deleteTask(${task.id}, event)" class="text-slate-500 hover:text-red-400 p-1 transition-colors" title="삭제">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
                     `;
+                    item.querySelector('.toggle-btn').addEventListener('click', event => {
+                        event.stopPropagation();
+                        toggleTask(task.id);
+                    });
                     item.addEventListener('dragstart', event => {
                         draggedTaskId = String(task.id);
                         event.dataTransfer.effectAllowed = 'move';
@@ -570,8 +580,29 @@
                         draggedTaskId = null;
                         item.classList.remove('opacity-40');
                     });
-                    list.appendChild(item);
-                });
+                    return item;
+                };
+
+                let doneCount = completedTasks.length;
+
+                if (activeTasks.length > 0) {
+                    activeTasks.forEach(task => {
+                        list.appendChild(renderTaskCard(task));
+                    });
+                }
+
+                if (completedTasks.length > 0) {
+                    const completedHeader = document.createElement('div');
+                    completedHeader.className = 'flex items-center justify-between gap-2 mt-4 mb-2 text-slate-300';
+                    completedHeader.innerHTML = `
+                        <span class="font-bold">완료된 항목</span>
+                        <span class="text-xs text-slate-500">체크 해제하면 다시 이동합니다</span>
+                    `;
+                    list.appendChild(completedHeader);
+                    completedTasks.forEach(task => {
+                        list.appendChild(renderTaskCard(task));
+                    });
+                }
 
                 const total = filtered.length;
                 const percent = Math.round((doneCount / total) * 100);
@@ -688,17 +719,9 @@
             }
         }
 
-        function handleTaskClick(id) {
-            if (clickTimers[id]) {
-                clearTimeout(clickTimers[id]);
-                delete clickTimers[id];
-                startEdit(id);
-            } else {
-                clickTimers[id] = setTimeout(() => {
-                    delete clickTimers[id];
-                    toggleTask(id);
-                }, 250);
-            }
+        function editTask(id, event) {
+            if (event) event.stopPropagation();
+            startEdit(id);
         }
 
         function moveTaskOrder(dragId, dropId) {
