@@ -26,7 +26,6 @@
         .bg-gradient-layer { position:absolute; inset:0; background:linear-gradient(to right, #0f1115 20%, rgba(15,17,21,0.92) 45%, rgba(15,17,21,0.65) 68%, rgba(15,17,21,0.15) 100%); }
         #bg-toggle-btn.bg-on { color: #a78bfa; }
         .countdown-display { font-weight: 600; color: #60a5fa; }
-        .countdown-alert { color: #ef4444; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -202,6 +201,28 @@
             return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
         }
 
+        // 리셋 기준 시각(24시간 중 시)
+        const RESET_HOUR = 5; // 새벽 5시
+
+        // 현재 리셋일 키: 리셋 시각 기준으로 날짜를 결정 (예: 새벽 5시 이전이면 전날이 리셋일)
+        function getCurrentResetDayKey(now = new Date()) {
+            const d = new Date(now);
+            if (d.getHours() < RESET_HOUR) {
+                d.setDate(d.getDate() - 1);
+            }
+            return d.toLocaleDateString('ko-KR');
+        }
+
+        // 현재 리셋 주 키: 리셋 시각(05:00) 기준으로 날짜를 보정한 뒤 ISO 주 키 계산
+        function getCurrentResetWeekKey(now = new Date()) {
+            const adj = new Date(now.getTime() - RESET_HOUR * 60 * 60 * 1000);
+            const d = new Date(Date.UTC(adj.getFullYear(), adj.getMonth(), adj.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+        }
+
         function init() {
             // 배경 이미지 초기 상태 적용
             document.getElementById('bg-image-overlay').style.opacity = bgVisible ? '1' : '0';
@@ -210,30 +231,30 @@
             stopCountdownTimer(); // 기존 타이머 정지
 
             const saved = localStorage.getItem(STORAGE_KEY);
-            const today = new Date().toLocaleDateString('ko-KR');
-            const weekKey = getWeekKey();
-            document.getElementById('current-date').innerText = today;
+            const todayKey = getCurrentResetDayKey();
+            const weekKey = getCurrentResetWeekKey();
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('ko-KR');
 
             if (saved) {
                 const data = JSON.parse(saved);
                 tasks = normalizeTaskOrder(data.tasks || []);
                 alarmSchedule = data.alarmSchedule || null;
-                lastDailyReset  = data.lastDailyReset  || today;
+                lastDailyReset  = data.lastDailyReset  || todayKey;
                 lastWeeklyReset = data.lastWeeklyReset || weekKey;
 
-                // 일간 자동 리셋 (날짜 변경 시)
-                if (lastDailyReset !== today) {
+                // 일간 자동 리셋 (리셋 기준일 변경 시)
+                if (lastDailyReset !== todayKey) {
                     tasks = tasks.map(t => t.type === 'daily' ? { ...t, done: false } : t);
-                    lastDailyReset = today;
+                    lastDailyReset = todayKey;
                 }
-                // 주간 자동 리셋 (주 변경 시 — 매주 월요일)
+                // 주간 자동 리셋 (리셋 기준 주 변경 시 — 매주 월요일 05:00 기준)
                 if (lastWeeklyReset !== weekKey) {
                     tasks = tasks.map(t => t.type === 'weekly' ? { ...t, done: false } : t);
                     lastWeeklyReset = weekKey;
                 }
             } else {
                 tasks = [...defaultTasks];
-                lastDailyReset  = today;
+                lastDailyReset  = todayKey;
                 lastWeeklyReset = weekKey;
             }
             tasks = normalizeTaskOrder(tasks);
@@ -249,7 +270,6 @@
             registerServiceWorker();
             if (alarmSchedule) {
                 scheduleAlarmWorker();
-                scheduleAlarmServiceWorker();
             }
             saveData();
             render();
@@ -340,18 +360,7 @@
 
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js').then(registration => {
-                    // 페이지 로드 시 저장된 알람 설정을 서비스 워커로 전달
-                    if (alarmSchedule && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({ type: 'set', time: alarmSchedule });
-                    }
-                    // 서비스 워커로부터의 메시지 수신
-                    navigator.serviceWorker.addEventListener('message', event => {
-                        if (event.data?.type === 'alarm') {
-                            showAlarmNotification(event.data.label || '설정된 시간');
-                        }
-                    });
-                }).catch(err => {
+                navigator.serviceWorker.register('sw.js').catch(err => {
                     console.warn('서비스 워커 등록 실패', err);
                 });
             }
@@ -394,7 +403,6 @@
             if (Number.isNaN(hour) || Number.isNaN(minute)) return;
             alarmSchedule = { hour, minute, label: `${input.value}` };
             scheduleAlarmWorker();
-            scheduleAlarmServiceWorker();
             updateAlarmStatus();
             requestNotificationPermission();
             saveData();
@@ -403,20 +411,9 @@
         function cancelAlarm() {
             if (!alarmWorker) return;
             alarmWorker.postMessage({ type: 'cancel' });
-            cancelAlarmServiceWorker();
             alarmSchedule = null;
             updateAlarmStatus();
             saveData();
-        }
-
-        function scheduleAlarmServiceWorker() {
-            if (!alarmSchedule || !navigator.serviceWorker.controller) return;
-            navigator.serviceWorker.controller.postMessage({ type: 'set', time: alarmSchedule });
-        }
-
-        function cancelAlarmServiceWorker() {
-            if (!navigator.serviceWorker.controller) return;
-            navigator.serviceWorker.controller.postMessage({ type: 'cancel' });
         }
 
         function requestNotificationPermission() {
@@ -560,33 +557,23 @@
             } else {
                 const hoverColors = { daily: 'hover:border-purple-500/50', weekly: 'hover:border-emerald-500/50', fixed: 'hover:border-amber-500/50' };
                 const checkColors = { daily: 'text-cyan-400', weekly: 'text-emerald-400', fixed: 'text-amber-400' };
-                const activeTasks = filtered.filter(t => !t.done);
-                const completedTasks = filtered.filter(t => t.done);
-                const renderTaskCard = task => {
+                let doneCount = 0;
+                filtered.forEach(task => {
+                    if (task.done) doneCount++;
                     const item = document.createElement('div');
                     item.className = `glass flex items-center justify-between p-4 rounded-2xl cursor-grab ${hoverColors[task.type]} transition-all ${task.done ? 'checked' : ''}`;
                     item.dataset.id = task.id;
                     item.draggable = true;
+                    item.onclick = () => handleTaskClick(task.id);
                     item.innerHTML = `
                         <div class="flex items-center gap-4">
-                            <button type="button" class="toggle-btn text-left text-slate-200 focus:outline-none">
-                                <i class="${task.done ? `fa-solid fa-circle-check ${checkColors[task.type]}` : 'fa-regular fa-circle'} text-xl"></i>
-                            </button>
-                            <span class="font-medium task-name cursor-text" title="편집 버튼으로 이름을 변경할 수 있습니다">${escapeHtml(task.name)}</span>
+                            <i class="${task.done ? `fa-solid fa-circle-check ${checkColors[task.type]}` : 'fa-regular fa-circle'} text-xl"></i>
+                            <span class="font-medium task-name cursor-text" title="더블클릭으로 편집">${escapeHtml(task.name)}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="startEdit(${task.id}, event)" class="text-slate-400 hover:text-cyan-300 p-1 transition-colors" title="이름 수정">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-                            <button type="button" onclick="deleteTask(${task.id}, event)" class="text-slate-500 hover:text-red-400 p-1 transition-colors" title="삭제">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
+                        <button onclick="deleteTask(${task.id}, event)" class="text-slate-500 hover:text-red-400 p-1 transition-colors">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     `;
-                    item.querySelector('.toggle-btn').addEventListener('click', event => {
-                        event.stopPropagation();
-                        toggleTask(task.id);
-                    });
                     item.addEventListener('dragstart', event => {
                         draggedTaskId = String(task.id);
                         event.dataTransfer.effectAllowed = 'move';
@@ -605,29 +592,8 @@
                         draggedTaskId = null;
                         item.classList.remove('opacity-40');
                     });
-                    return item;
-                };
-
-                let doneCount = completedTasks.length;
-
-                if (activeTasks.length > 0) {
-                    activeTasks.forEach(task => {
-                        list.appendChild(renderTaskCard(task));
-                    });
-                }
-
-                if (completedTasks.length > 0) {
-                    const completedHeader = document.createElement('div');
-                    completedHeader.className = 'flex items-center justify-between gap-2 mt-4 mb-2 text-slate-300';
-                    completedHeader.innerHTML = `
-                        <span class="font-bold">완료된 항목</span>
-                        <span class="text-xs text-slate-500">체크 해제하면 다시 이동합니다</span>
-                    `;
-                    list.appendChild(completedHeader);
-                    completedTasks.forEach(task => {
-                        list.appendChild(renderTaskCard(task));
-                    });
-                }
+                    list.appendChild(item);
+                });
 
                 const total = filtered.length;
                 const percent = Math.round((doneCount / total) * 100);
@@ -712,6 +678,30 @@
             }
         }
 
+        function performDailyReset() {
+            tasks = tasks.map(t => t.type === 'daily' ? { ...t, done: false } : t);
+            showResetToast('매일 05:00 초기화 완료');
+        }
+
+        function performWeeklyReset() {
+            tasks = tasks.map(t => t.type === 'weekly' ? { ...t, done: false } : t);
+            showResetToast('주간(월요일 05:00) 초기화 완료');
+        }
+
+        function showResetToast(text) {
+            const toast = document.getElementById('celebration-toast');
+            const old = toast.innerText;
+            toast.innerText = text;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(1rem)';
+                toast.innerText = old;
+            }, 3000);
+        }
+
         function updateCountdown() {
             const dailyReset = getNextDailyReset();
             const weeklyReset = getNextWeeklyReset();
@@ -720,24 +710,32 @@
             const dailyMs = dailyReset - now;
             const weeklyMs = weeklyReset - now;
 
+            // 자동 리셋 감지: 카운트다운이 0 이하로 내려가면(리셋 시각 도달) 실제 리셋 수행
+            const currentDayKey = getCurrentResetDayKey(now);
+            const currentWeekKey = getCurrentResetWeekKey(now);
+            if (dailyMs <= 0 && lastDailyReset !== currentDayKey) {
+                performDailyReset();
+                lastDailyReset = currentDayKey;
+                saveData();
+                render();
+                return; // render가 재호출되므로 업데이트 루틴 종료
+            }
+            if (weeklyMs <= 0 && lastWeeklyReset !== currentWeekKey) {
+                performWeeklyReset();
+                lastWeeklyReset = currentWeekKey;
+                saveData();
+                render();
+                return;
+            }
+
             const dailyElement = document.getElementById('countdown-daily');
             const weeklyElement = document.getElementById('countdown-weekly');
 
             if (dailyElement) {
                 dailyElement.textContent = formatCountdown(dailyMs);
-                if (dailyMs < 3600000 && dailyMs > 0) {
-                    dailyElement.classList.add('countdown-alert');
-                } else {
-                    dailyElement.classList.remove('countdown-alert');
-                }
             }
             if (weeklyElement) {
                 weeklyElement.textContent = formatCountdown(weeklyMs);
-                if (weeklyMs < 3600000 && weeklyMs > 0) {
-                    weeklyElement.classList.add('countdown-alert');
-                } else {
-                    weeklyElement.classList.remove('countdown-alert');
-                }
             }
         }
 
@@ -754,9 +752,17 @@
             }
         }
 
-        function editTask(id, event) {
-            if (event) event.stopPropagation();
-            startEdit(id);
+        function handleTaskClick(id) {
+            if (clickTimers[id]) {
+                clearTimeout(clickTimers[id]);
+                delete clickTimers[id];
+                startEdit(id);
+            } else {
+                clickTimers[id] = setTimeout(() => {
+                    delete clickTimers[id];
+                    toggleTask(id);
+                }, 250);
+            }
         }
 
         function moveTaskOrder(dragId, dropId) {
