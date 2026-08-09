@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
     <style>
-        body { font-family: "Pretendard", sans-serif; overflow: hidden; }
+        body { font-family: "Pretendard", sans-serif; overflow-x: hidden; }
         .glass { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px); }
         .bg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.05); z-index: -1; }
     </style>
@@ -16,16 +16,31 @@
 
     <div class="bg-overlay"></div>
 
-    <div id="link-container" class="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl w-full">
+    <div class="max-w-2xl w-full">
+        <div id="link-container" class="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            </div>
+
+        <div id="tools-panel" class="hidden mt-16">
+            <div id="tools-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                </div>
         </div>
+    </div>
 
     <script>
         // 1. 링크 데이터 관리 (여기만 수정하면 버튼이 추가됩니다)
         const links = [
             { name: 'Home', url: 'https://bizu.tk/', icon: '🏠', color: 'blue' },
             { name: 'GitHub', url: 'https://github.com/sysilion', icon: 'github', color: 'slate' },
-            { name: 'Tools', url: 'prism.tools/', icon: '📁', color: 'emerald' },
+            { name: 'Tools', icon: '📁', color: 'emerald', toggle: 'tools' },
             { name: 'Blog', url: '#', icon: '✍️', color: 'amber' }
+        ];
+
+        // Tools 클릭 시 하단에 펼쳐지는 목록 (여기만 수정하면 항목이 추가됩니다)
+        const tools = [
+            { name: 'NTE Tracker', url: 'nte/', icon: '✅', desc: '할 일 체크리스트 · 알람 · PWA' },
+            { name: '서브컬쳐 타임라인', url: 'subculture-timeline/', icon: '🎮', desc: '게임 배너 · 이벤트 통합 타임라인' },
+            { name: 'Red Table Map', url: 'redtable_point/', icon: '🍽️', desc: '맛집 지도' },
+            { name: 'MovieHub', url: 'moviehub/', icon: '🎬', desc: '영화관 이벤트 모아보기' }
         ];
 
         // 2. 버튼 생성 로직
@@ -44,17 +59,39 @@
                 ? `<svg class="w-8 h-8 fill-current transition-colors" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`
                 : `<span class="text-3xl group-hover:scale-110 transition-transform">${link.icon}</span>`;
 
-            container.innerHTML += `
-                <a href="${link.url}" target="_blank" rel="noopener noreferrer" 
-                   class="group relative flex flex-col items-center justify-center aspect-square glass border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105 ${colorClass.split(' ')[0]}">
+            const tileClass = `group relative flex flex-col items-center justify-center aspect-square w-full glass border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-105 ${colorClass.split(' ')[0]}`;
+            const tileInner = `
                     <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300 ${colorClass.split(' ').slice(1).join(' ')} group-hover:text-white">
                         ${iconContent}
                     </div>
                     <span class="absolute -bottom-10 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 text-xs font-bold bg-white px-3 py-1.5 rounded-lg shadow-md border border-slate-100 whitespace-nowrap pointer-events-none">
                         ${link.name}
-                    </span>
-                </a>
-            `;
+                    </span>`;
+
+            container.innerHTML += link.toggle
+                ? `<button type="button" data-toggle="${link.toggle}" aria-expanded="false" aria-controls="${link.toggle}-panel" class="${tileClass}">${tileInner}</button>`
+                : `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="${tileClass}">${tileInner}</a>`;
+        });
+
+        // 2-1. Tools 목록 생성
+        document.getElementById('tools-list').innerHTML = tools.map(tool => `
+            <a href="${tool.url}" target="_blank" rel="noopener noreferrer"
+               class="group flex items-center gap-4 glass border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:shadow-lg hover:border-emerald-400 transition-all duration-300">
+                <span class="w-11 h-11 shrink-0 rounded-xl bg-emerald-100 flex items-center justify-center text-xl transition-transform group-hover:scale-110">${tool.icon}</span>
+                <span class="min-w-0">
+                    <span class="block text-sm font-bold truncate">${tool.name}</span>
+                    <span class="block text-xs text-slate-500 truncate">${tool.desc}</span>
+                </span>
+            </a>
+        `).join('');
+
+        // 2-2. Tools 토글 동작
+        const toolsPanel = document.getElementById('tools-panel');
+        const toolsBtn = container.querySelector('[data-toggle="tools"]');
+
+        toolsBtn.addEventListener('click', () => {
+            const opened = toolsPanel.classList.toggle('hidden') === false;
+            toolsBtn.setAttribute('aria-expanded', String(opened));
         });
 
         // 3. 배경 GIF 로직 (최신 Fetch API 사용)
