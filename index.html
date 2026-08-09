@@ -10,6 +10,39 @@
         body { font-family: "Pretendard", sans-serif; overflow-x: hidden; }
         .glass { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(12px); }
         .bg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.05); z-index: -1; }
+
+        /* Tools 목록 펼침: 0fr -> 1fr 로 높이를 자연스럽게 전환 */
+        .collapsible {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .collapsible > * { overflow: hidden; }
+        .collapsible.is-open { grid-template-rows: 1fr; }
+
+        /* 항목은 순차적으로 떠오르듯 등장 */
+        .collapsible .tool-item {
+            opacity: 0;
+            transform: translateY(12px);
+            /* --stagger 는 펼칠 때만 적용되고, hover(그림자·테두리)는 지연 없이 반응 */
+            transition: opacity 300ms ease var(--stagger, 0ms),
+                        transform 300ms cubic-bezier(0.22, 1, 0.36, 1) var(--stagger, 0ms),
+                        box-shadow 300ms ease,
+                        border-color 300ms ease;
+        }
+        .collapsible.is-open .tool-item { opacity: 1; transform: none; }
+
+        /* 접힐 때는 지연 없이 한번에 사라지도록 */
+        .collapsible:not(.is-open) .tool-item { --stagger: 0ms; }
+
+        .tools-toggle .tools-caret { transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .tools-toggle[aria-expanded="true"] .tools-caret { transform: rotate(180deg); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .collapsible,
+            .collapsible .tool-item,
+            .tools-toggle .tools-caret { transition: none; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-6 relative">
@@ -20,9 +53,11 @@
         <div id="link-container" class="grid grid-cols-2 sm:grid-cols-4 gap-6">
             </div>
 
-        <div id="tools-panel" class="hidden mt-16">
-            <div id="tools-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                </div>
+        <div id="tools-panel" class="collapsible">
+            <div>
+                <div id="tools-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-16">
+                    </div>
+            </div>
         </div>
     </div>
 
@@ -68,15 +103,17 @@
                         ${link.name}
                     </span>`;
 
+            const caret = `<svg class="tools-caret absolute top-3 right-3 w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.19l3.71-3.96a.75.75 0 111.08 1.04l-4.25 4.53a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>`;
+
             container.innerHTML += link.toggle
-                ? `<button type="button" data-toggle="${link.toggle}" aria-expanded="false" aria-controls="${link.toggle}-panel" class="${tileClass}">${tileInner}</button>`
+                ? `<button type="button" data-toggle="${link.toggle}" aria-expanded="false" aria-controls="${link.toggle}-panel" class="tools-toggle ${tileClass}">${tileInner}${caret}</button>`
                 : `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="${tileClass}">${tileInner}</a>`;
         });
 
         // 2-1. Tools 목록 생성
-        document.getElementById('tools-list').innerHTML = tools.map(tool => `
-            <a href="${tool.url}" target="_blank" rel="noopener noreferrer"
-               class="group flex items-center gap-4 glass border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:shadow-lg hover:border-emerald-400 transition-all duration-300">
+        document.getElementById('tools-list').innerHTML = tools.map((tool, i) => `
+            <a href="${tool.url}" target="_blank" rel="noopener noreferrer" style="--stagger: ${i * 60}ms"
+               class="tool-item group flex items-center gap-4 glass border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:shadow-lg hover:border-emerald-400">
                 <span class="w-11 h-11 shrink-0 rounded-xl bg-emerald-100 flex items-center justify-center text-xl transition-transform group-hover:scale-110">${tool.icon}</span>
                 <span class="min-w-0">
                     <span class="block text-sm font-bold truncate">${tool.name}</span>
@@ -90,8 +127,13 @@
         const toolsBtn = container.querySelector('[data-toggle="tools"]');
 
         toolsBtn.addEventListener('click', () => {
-            const opened = toolsPanel.classList.toggle('hidden') === false;
+            const opened = toolsPanel.classList.toggle('is-open');
             toolsBtn.setAttribute('aria-expanded', String(opened));
+
+            // 펼칠 때만, 목록이 다 나타난 뒤 화면에 들어오도록 스크롤
+            if (opened) {
+                setTimeout(() => toolsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 420);
+            }
         });
 
         // 3. 배경 GIF 로직 (최신 Fetch API 사용)
