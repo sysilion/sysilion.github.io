@@ -72,10 +72,10 @@
 
         // Tools 클릭 시 하단에 펼쳐지는 목록 (여기만 수정하면 항목이 추가됩니다)
         const tools = [
-            { name: 'NTE Tracker', url: 'nte/', icon: '✅', desc: '할 일 체크리스트 · 알람 · PWA' },
-            { name: '서브컬쳐 타임라인', url: 'subculture-timeline/', icon: '🎮', desc: '게임 배너 · 이벤트 통합 타임라인' },
-            { name: 'Red Table Map', url: 'redtable_point/', icon: '🍽️', desc: '맛집 지도' },
-            { name: 'MovieHub', url: 'moviehub/', icon: '🎬', desc: '영화관 이벤트 모아보기' }
+            { name: 'NTE Tracker', url: 'nte/', icon: '✅' },
+            { name: '서브컬쳐 타임라인', url: 'subculture-timeline/', icon: '🎮' },
+            { name: 'Red Table Map', url: 'redtable_point/', icon: '🍽️' },
+            { name: 'MovieHub', url: 'moviehub/', icon: '🎬' }
         ];
 
         // 2. 버튼 생성 로직
@@ -115,10 +115,7 @@
             <a href="${tool.url}" target="_blank" rel="noopener noreferrer" style="--stagger: ${i * 60}ms"
                class="tool-item group flex items-center gap-4 glass border border-slate-200 rounded-2xl px-4 py-3 shadow-sm hover:shadow-lg hover:border-emerald-400">
                 <span class="w-11 h-11 shrink-0 rounded-xl bg-emerald-100 flex items-center justify-center text-xl transition-transform group-hover:scale-110">${tool.icon}</span>
-                <span class="min-w-0">
-                    <span class="block text-sm font-bold truncate">${tool.name}</span>
-                    <span class="block text-xs text-slate-500 truncate">${tool.desc}</span>
-                </span>
+                <span class="text-sm font-bold truncate">${tool.name}</span>
             </a>
         `).join('');
 
