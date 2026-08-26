@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="outer-glow" cx="50%" cy="60%" r="50%">
+      <stop offset="0%" stop-color="#ff7b00" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ff3b00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffcc00"/>
+      <stop offset="40%" stop-color="#ff5500"/>
+      <stop offset="100%" stop-color="#ff2255"/>
+    </linearGradient>
+    <linearGradient id="inner-flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffff55"/>
+      <stop offset="100%" stop-color="#ffaa00"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    @keyframes flicker {
+      0% { transform: scale(1) translate(0, 0) rotate(0deg); }
+      20% { transform: scale(1.05, 0.95) translate(-1px, 2px) rotate(-3deg); }
+      40% { transform: scale(0.95, 1.05) translate(1px, -2px) rotate(2deg); }
+      60% { transform: scale(1.03, 0.98) translate(0, 1px) rotate(-1deg); }
+      80% { transform: scale(0.98, 1.02) translate(-1px, -1px) rotate(1deg); }
+      100% { transform: scale(1) translate(0, 0) rotate(0deg); }
+    }
+    @keyframes inner-dance {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-2px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    .flame-body {
+      transform-origin: 32px 50px;
+      animation: flicker 1.8s infinite ease-in-out;
+    }
+    .flame-inner {
+      transform-origin: 32px 42px;
+      animation: inner-dance 0.9s infinite ease-in-out;
+    }
+    .eye {
+      animation: blink 3s infinite;
+      transform-origin: center;
+    }
+    @keyframes blink {
+      0%, 96%, 100% { transform: scaleY(1); }
+      98% { transform: scaleY(0.1); }
+    }
+  </style>
+
+  <!-- Glow background -->
+  <circle cx="32" cy="36" r="28" fill="url(#outer-glow)" />
+
+  <g class="flame-body">
+    <!-- Outer flame shape (Calcifer silhouette) -->
+    <path d="M32 4 C32 4, 12 24, 12 40 C12 53, 21 60, 32 60 C43 60, 52 53, 52 40 C52 24, 32 4, 32 4 Z" fill="url(#flame-grad)" stroke="#991100" stroke-width="1.5" stroke-linejoin="round"/>
+    
+    <!-- Inner bright flame -->
+    <path class="flame-inner" d="M32 16 C32 16, 20 30, 20 42 C20 50, 25 54, 32 54 C39 54, 44 50, 44 42 C44 30, 32 16, 32 16 Z" fill="url(#inner-flame)"/>
+
+    <!-- Cute Eyes -->
+    <g class="eye" transform="translate(24, 38)">
+      <ellipse cx="0" cy="0" rx="3.5" ry="4.5" fill="#ffffff" />
+      <circle cx="0.5" cy="0" r="2" fill="#111111" />
+      <circle cx="-1" cy="-1.5" r="0.8" fill="#ffffff" />
+    </g>
+    <g class="eye" transform="translate(40, 38)">
+      <ellipse cx="0" cy="0" rx="3.5" ry="4.5" fill="#ffffff" />
+      <circle cx="-0.5" cy="0" r="2" fill="#111111" />
+      <circle cx="-2" cy="-1.5" r="0.8" fill="#ffffff" />
+    </g>
+
+    <!-- Cute smile / mouth -->
+    <path d="M 28 47 Q 32 51 36 47" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
