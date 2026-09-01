@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Task Tracker</title>
+    <title>Task Tracker</title>
     <link rel="icon" type="image/svg+xml" href="../favicon.svg">
     <script src="../favicon-flame.js" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,7 +46,7 @@
         <!-- 헤더 -->
         <header class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-2xl font-black gradient-text">Universal Task Tracker</h1>
+                <h1 class="text-2xl font-black gradient-text">Task Tracker</h1>
                 <p id="current-date" class="text-slate-500 text-sm mt-1"></p>
             </div>
             <div class="flex items-center gap-3">
@@ -427,7 +427,7 @@
 
         function showAlarmNotification(timeText) {
             if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('NTE 알람', {
+                new Notification('Task Tracker 알람', {
                     body: `${timeText}에 알림이 도착했습니다.`,
                 });
             }

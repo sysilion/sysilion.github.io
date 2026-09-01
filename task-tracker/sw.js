@@ -73,12 +73,12 @@ function checkAlarm() {
 
 function triggerAlarm() {
   const label = alarmSchedule.label || '설정된 시간';
-  const title = 'NTE 알람';
+  const title = 'Task Tracker 알람';
   const options = {
     body: `${label}에 알림이 도착했습니다.`,
     icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjN2MzYWVkIi8+PHRleHQgeD0iNTAlIiB5PSI1NCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJQcmV0ZW5kYXJkLCBzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg4IiBmaWxsPSIjZmZmIj5OPC90ZXh0Pjwvc3ZnPg==',
     badge: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjN2MzYWVkIi8+PHRleHQgeD0iNTAlIiB5PSI1NCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJQcmV0ZW5kYXJkLCBzYW5zLXNlcmlmIiBmb250LXNpemU9Ijg4IiBmaWxsPSIjZmZmIj5OPC90ZXh0Pjwvc3ZnPg==',
-    tag: 'nte-alarm',
+    tag: 'task-tracker-alarm',
     requireInteraction: true
   };
 
